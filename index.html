@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kaeser Colombia - Inteligencia de Campo</title>
     
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
+    <link rel="stylesheet" href="[https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css](https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css)">
     
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f1f5f9; }
@@ -97,7 +97,7 @@
             </div>
         </section>
 
-        <section class="bg-white rounded-lg shadow-md p-6 border-t-4 border-slate-500 space-y-4">
+        <section class="bg-white rounded-lg shadow-md p-6 border-t-4 border-[#48717c] space-y-4">
             <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
                 <i class="fa-solid fa-image text-green-500"></i> Paso 3: Fotografías del Servicio (Ilustraciones de campo)
             </h2>
@@ -146,15 +146,20 @@
         </section>
     </main>
 
+    <form id="kaeser_form_post" method="POST" action="" target="kaeser_hidden_iframe" class="hidden">
+        <input type="hidden" name="payload" id="kaeser_form_payload">
+    </form>
+    <iframe name="kaeser_hidden_iframe" id="kaeser_hidden_iframe" class="hidden"></iframe>
+
     <footer class="bg-gray-800 text-gray-400 text-center py-4 text-xs border-t border-gray-700 mt-8">
         <p>© 2026 Kaeser Compresores de Colombia S.A.S. | Todos los derechos reservados.</p>
     </footer>
 
     <script>
         // =====================================================================================
-        // 🔗 1. CONFIGURACIÓN DEL ENLACE (OJO: PEGA TU LINK ADENTRO DE LAS COMILLAS SIN BORRARLAS)
+        // 🔗 CONFIGURACIÓN DE URL ENLACE (PEGA TU URL DE GOOGLE EN LAS COMILLAS SIN BORRARLAS)
         // =====================================================================================
-        const CONFIG_SCRIPT_URL = "https://script.google.com/a/macros/kaeser.com/s/AKfycbwreykhAzRyRXxZActZubnA3Up1topJTZSC9urOZAoMVqtXoUQlxllQKJZtwW2SY-Xq/exec"; 
+        const CONFIG_SCRIPT_URL = "AQUÍ_PEGA_TU_LINK_DE_APPS_SCRIPT_QUE_TERMINA_EN_EXEC"; 
         // =====================================================================================
 
         let listaAudios = [];
@@ -170,6 +175,25 @@
             setupDragAndDrop('drop_zone_audios', 'file_audios', cargarAudiosArchivos);
             setupDragAndDrop('drop_zone_placas', 'file_placas', cargarPlacasArchivos);
             setupDragAndDrop('drop_zone_fotos', 'file_fotos', cargarFotosArchivos);
+
+            // Escuchar la respuesta segura desde el iframe de Google (Evita CORS)
+            window.addEventListener("message", function(event) {
+                try {
+                    let res = JSON.parse(event.data);
+                    document.getElementById("loading_panel").classList.add("hidden");
+                    document.getElementById("btn_generar").classList.remove("hidden");
+                    
+                    if (res.success) {
+                        document.getElementById("success_message").innerHTML = `Informe procesado con éxito para <strong>${res.cliente}</strong>.`;
+                        document.getElementById("success_link").href = res.url;
+                        document.getElementById("success_panel").classList.remove("hidden");
+                        listaAudios = []; listaFotos = []; listaPlacas = []; renderizarListas();
+                    } else {
+                        document.getElementById("error_message_text").innerText = res.message;
+                        document.getElementById("error_panel").classList.remove("hidden");
+                    }
+                } catch(e) {}
+            });
         };
 
         function mostrarToast(msg) {
@@ -370,7 +394,7 @@
         function iniciarGeneracionReporte() {
             let scriptUrl = CONFIG_SCRIPT_URL.trim();
             if (!scriptUrl || scriptUrl.indexOf("AQUÍ_PEGA") !== -1) {
-                return alert("Error de configuración: Reemplaza tu URL de Google Apps Script en la línea 157 de index.html.");
+                return alert("Error de configuración: Reemplaza tu URL de Google Apps Script.");
             }
 
             if (listaAudios.length === 0) return mostrarToast("Carga al menos un audio.");
@@ -386,31 +410,13 @@
             document.getElementById("btn_generar").classList.add("hidden");
             document.getElementById("loading_panel").classList.remove("hidden");
 
-            fetch(scriptUrl, {
-                method: "POST",
-                headers: { "Content-Type": "text/plain" },
-                body: JSON.stringify({ audios: listaAudios, fotos: listaFotos, placas: listaPlacas })
-            })
-            .then(response => response.json())
-            .then(res => {
-                document.getElementById("loading_panel").classList.add("hidden");
-                document.getElementById("btn_generar").classList.remove("hidden");
-                if (res.success) {
-                    document.getElementById("success_message").innerHTML = `Informe procesado con éxito para <strong>${res.cliente}</strong>.`;
-                    document.getElementById("success_link").href = res.url;
-                    document.getElementById("success_panel").classList.remove("hidden");
-                    listaAudios = []; listaFotos = []; listaPlacas = []; renderizarListas();
-                } else {
-                    document.getElementById("error_message_text").innerText = res.message;
-                    document.getElementById("error_panel").classList.remove("hidden");
-                }
-            })
-            .catch(err => {
-                document.getElementById("loading_panel").classList.add("hidden");
-                document.getElementById("btn_generar").classList.remove("hidden");
-                document.getElementById("error_message_text").innerText = "Falla de red: " + err.toString();
-                document.getElementById("error_panel").classList.remove("hidden");
-            });
+            // 🛡️ ENVIAR MEDIANTE FORMULARIO NATIVAMENTE INMUNE A CORS
+            const form = document.getElementById("kaeser_form_post");
+            const payloadInput = document.getElementById("kaeser_form_payload");
+            
+            form.action = scriptUrl;
+            payloadInput.value = JSON.stringify({ audios: listaAudios, fotos: listaFotos, placas: listaPlacas });
+            form.submit();
         }
     </script>
 </body>
