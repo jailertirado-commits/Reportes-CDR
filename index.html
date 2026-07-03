@@ -88,7 +88,7 @@
             <div id="drop_zone_placas" class="border-2 border-dashed border-gray-300 p-6 rounded-lg text-center bg-slate-50 cursor-pointer relative">
                 <input type="file" id="file_placas" multiple accept="image/*" onchange="cargarPlacasArchivos(event)" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
                 <i class="fa-solid fa-barcode text-4xl text-gray-400 mb-2"></i>
-                <p class="text-sm font-semibold text-gray-600">Haz clic aquí o arrastra las fotos de las placas</p>
+                <p class="text-sm font-semibold text-gray-600">Haz clic aquí O arrastra las fotos de las placas</p>
             </div>
 
             <div id="lista_placas_contenedor" class="hidden space-y-2 border-t pt-4">
@@ -157,7 +157,7 @@
 
     <script>
         // =====================================================================================
-        // 🔗 CONFIGURACIÓN DE URL ENLACE (PEGA TU LINK ADENTRO DE LAS COMILLAS DEBAJO)
+        // 🔗 URL OFICIAL SIN ERRORES DE SINTAXIS (YA INYECTADA DIRECTAMENTE POR GEMINI)
         // =====================================================================================
         const CONFIG_SCRIPT_URL = "https://script.google.com/a/macros/kaeser.com/s/AKfycbwreykhAzRyRXxZActZubnA3Up1topJTZSC9urOZAoMVqtXoUQlxllQKJZtwW2SY-Xq/exec"; 
         // =====================================================================================
@@ -358,3 +358,65 @@
                         <img src="${placa.previsualizacionUrl}" class="w-full h-20 object-cover">
                         <button onclick="eliminarPlaca(${idx})" class="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full"><i class="fa-solid fa-xmark"></i></button>
                         <div class="p-1 bg-gray-50 truncate">${placa.nombre}</div>
+                    </div>`;
+                });
+            } else document.getElementById("lista_placas_contenedor").classList.add("hidden");
+
+            let divF = document.getElementById("grid_fotos"); divF.innerHTML = "";
+            if (listaFotos.length > 0) {
+                document.getElementById("lista_fotos_contenedor").classList.remove("hidden");
+                listaFotos.forEach((foto, idx) => {
+                    divF.innerHTML += `<div class="relative border rounded bg-white overflow-hidden text-center text-[10px]">
+                        <img src="${foto.previsualizacionUrl}" class="w-full h-20 object-cover">
+                        <button onclick="eliminarFoto(${idx})" class="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full"><i class="fa-solid fa-xmark"></i></button>
+                        <div class="p-1 bg-gray-50 truncate">${foto.nombre}</div>
+                    </div>`;
+                });
+            } else document.getElementById("lista_fotos_contenedor").classList.add("hidden");
+        }
+
+        function setupDragAndDrop(idZone, inputId, processFunction) {
+            const dropZone = document.getElementById(idZone);
+            const fileInput = document.getElementById(inputId);
+            dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+            dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('drag-over'); });
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('drag-over');
+                if (e.dataTransfer.files.length > 0) {
+                    fileInput.files = e.dataTransfer.files;
+                    const event = { target: { files: e.dataTransfer.files } };
+                    processFunction(event);
+                }
+            });
+        }
+
+        function iniciarGeneracionReporte() {
+            let scriptUrl = CONFIG_SCRIPT_URL.trim();
+            if (!scriptUrl || scriptUrl.indexOf("AQUÍ_PEGA") !== -1) {
+                return alert("Error de configuración: Reemplaza tu URL de Google Apps Script.");
+            }
+
+            if (listaAudios.length === 0) return mostrarToast("Carga al menos un audio.");
+            
+            let totalChars = 0;
+            listaAudios.forEach(a => totalChars += a.bytesBase64.length);
+            listaPlacas.forEach(p => totalChars += p.bytesBase64.length);
+            listaFotos.forEach(f => totalChars += f.bytesBase64.length);
+            if (((totalChars * 0.75) / (1024 * 1024)) > 8.0) return mostrarToast("Exceso de peso acumulado.");
+
+            document.getElementById("success_panel").classList.add("hidden");
+            document.getElementById("error_panel").classList.add("hidden");
+            document.getElementById("btn_generar").classList.add("hidden");
+            document.getElementById("loading_panel").classList.remove("hidden");
+
+            const form = document.getElementById("kaeser_form_post");
+            const payloadInput = document.getElementById("kaeser_form_payload");
+            
+            form.action = scriptUrl;
+            payloadInput.value = JSON.stringify({ audios: listaAudios, fotos: listaFotos, placas: listaPlacas });
+            form.submit();
+        }
+    </script>
+</body>
+</html>
