@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kaeser Colombia - Inteligencia de Campo</title>
     
-    <!-- Librerías de Diseño Estáticas Limpias (Cero Markdown) -->
-    <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
-    <link rel="stylesheet" href="[https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css](https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css)">
+    <!-- Librerías de Diseño Estáticas Pristinas (Totalmente limpias de corchetes o Markdown) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f1f5f9; }
@@ -48,7 +48,7 @@
     <!-- CUERPO PRINCIPAL -->
     <main class="flex-grow max-w-4xl w-full mx-auto p-4 md:p-6 space-y-6">
 
-        <!-- CONFIGURACIÓN DE URL API (Solo visible si no se ha configurado) -->
+        <!-- CONFIGURACIÓN DE URL API -->
         <section id="config_api_panel" class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500">
             <div class="space-y-3">
                 <p class="text-xs font-semibold text-gray-700">⚙️ Configuración del Ecosistema de Campo (Solución 2):</p>
@@ -401,11 +401,11 @@
         };
 
         function iniciarGeneracionReporte() {
-            let scriptUrl = localStorage.getItem("kaeser_exec_url") || "";
+            let scriptUrl = localStorage.getItem("kaeser_api_url") || "";
             if (!scriptUrl) {
                 scriptUrl = prompt("Por favor, pega la URL de tu Web App de Google Apps Script (/exec) para conectar la base de datos:");
                 if (!scriptUrl) return mostrarToast("Se requiere la URL de Apps Script.");
-                localStorage.setItem("kaeser_exec_url", scriptUrl);
+                localStorage.setItem("kaeser_api_url", scriptUrl);
             }
 
             if (listaAudios.length === 0) return mostrarToast("Carga al menos un audio.");
