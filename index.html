@@ -48,7 +48,7 @@
             <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
                 <i class="fa-solid fa-microphone text-red-500"></i> Paso 1: Registrar Notas de Voz de Campo
             </h2>
-            <p class="text-sm text-gray-500">Graba directo estilo WhatsApp de forma 100% nativa o carga tus archivos (soporta notas PTT de WhatsApp perfectamente).</p>
+            <p class="text-sm text-gray-500">Graba directo estilo WhatsApp de forma 100% nativa o carga tus archivos (soporta notes PTT de WhatsApp perfectamente).</p>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="border-2 border-gray-200 p-4 rounded-lg bg-slate-50 flex flex-col justify-between min-h-[160px] relative">
@@ -88,7 +88,7 @@
             <div id="drop_zone_placas" class="border-2 border-dashed border-gray-300 p-6 rounded-lg text-center bg-slate-50 cursor-pointer relative">
                 <input type="file" id="file_placas" multiple accept="image/*" onchange="cargarPlacasArchivos(event)" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
                 <i class="fa-solid fa-barcode text-4xl text-gray-400 mb-2"></i>
-                <p class="text-sm font-semibold text-gray-600">Haz clic aquí O arrastra las fotos de las placas</p>
+                <p class="text-sm font-semibold text-gray-600">Haz clic aquí o arrastra las fotos de las placas</p>
             </div>
 
             <div id="lista_placas_contenedor" class="hidden space-y-2 border-t pt-4">
@@ -156,11 +156,7 @@
     </footer>
 
     <script>
-        // =====================================================================================
-        // 🔗 URL OFICIAL SIN ERRORES DE SINTAXIS (YA INYECTADA DIRECTAMENTE POR GEMINI)
-        // =====================================================================================
         const CONFIG_SCRIPT_URL = "https://script.google.com/a/macros/kaeser.com/s/AKfycbwreykhAzRyRXxZActZubnA3Up1topJTZSC9urOZAoMVqtXoUQlxllQKJZtwW2SY-Xq/exec"; 
-        // =====================================================================================
 
         let listaAudios = [];
         let listaFotos = [];
@@ -170,31 +166,6 @@
         let audioChunks = [];
         let tInicioGrabacion;
         let timerInterval;
-
-        window.onload = function() {
-            setupDragAndDrop('drop_zone_audios', 'file_audios', cargarAudiosArchivos);
-            setupDragAndDrop('drop_zone_placas', 'file_placas', cargarPlacasArchivos);
-            setupDragAndDrop('drop_zone_fotos', 'file_fotos', cargarFotosArchivos);
-
-            // Escuchar la respuesta segura desde el iframe de Google (Evita CORS)
-            window.addEventListener("message", function(event) {
-                try {
-                    let res = JSON.parse(event.data);
-                    document.getElementById("loading_panel").classList.add("hidden");
-                    document.getElementById("btn_generar").classList.remove("hidden");
-                    
-                    if (res.success) {
-                        document.getElementById("success_message").innerHTML = `Informe procesado con éxito para <strong>${res.cliente}</strong>.`;
-                        document.getElementById("success_link").href = res.url;
-                        document.getElementById("success_panel").classList.remove("hidden");
-                        listaAudios = []; listaFotos = []; listaPlacas = []; renderizarListas();
-                    } else {
-                        document.getElementById("error_message_text").innerText = res.message;
-                        document.getElementById("error_panel").classList.remove("hidden");
-                    }
-                } catch(e) {}
-            });
-        };
 
         function mostrarToast(msg) {
             document.getElementById("toast_texto").innerText = msg;
@@ -246,6 +217,32 @@
             document.getElementById("panel_grabacion_idle").classList.remove("hidden");
             if (mediaRecorder && mediaRecorder.stream) mediaRecorder.stream.getTracks().forEach(t => t.stop());
         }
+    </script>
+
+    <script>
+        window.onload = function() {
+            setupDragAndDrop('drop_zone_audios', 'file_audios', cargarAudiosArchivos);
+            setupDragAndDrop('drop_zone_placas', 'file_placas', cargarPlacasArchivos);
+            setupDragAndDrop('drop_zone_fotos', 'file_fotos', cargarFotosArchivos);
+
+            window.addEventListener("message", function(event) {
+                try {
+                    let res = JSON.parse(event.data);
+                    document.getElementById("loading_panel").classList.add("hidden");
+                    document.getElementById("btn_generar").classList.remove("hidden");
+                    
+                    if (res.success) {
+                        document.getElementById("success_message").innerHTML = `Informe procesado con éxito para <strong>${res.cliente}</strong>.`;
+                        document.getElementById("success_link").href = res.url;
+                        document.getElementById("success_panel").classList.remove("hidden");
+                        listaAudios = []; listaFotos = []; listaPlacas = []; renderizarListas();
+                    } else {
+                        document.getElementById("error_message_text").innerText = res.message;
+                        document.getElementById("error_panel").classList.remove("hidden");
+                    }
+                } catch(e) {}
+            });
+        };
 
         function eliminarAudio(idx) { listaAudios.splice(idx, 1); renderizarListas(); }
         function eliminarFoto(idx) { listaFotos.splice(idx, 1); renderizarListas(); }
@@ -396,7 +393,6 @@
             if (!scriptUrl || scriptUrl.indexOf("AQUÍ_PEGA") !== -1) {
                 return alert("Error de configuración: Reemplaza tu URL de Google Apps Script.");
             }
-
             if (listaAudios.length === 0) return mostrarToast("Carga al menos un audio.");
             
             let totalChars = 0;
