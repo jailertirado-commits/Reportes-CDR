@@ -97,7 +97,7 @@
             </div>
         </section>
 
-        <section class="bg-white rounded-lg shadow-md p-6 border-t-4 border-[#48717c] space-y-4">
+        <section class="bg-white rounded-lg shadow-md p-6 border-t-4 border-slate-500 space-y-4">
             <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
                 <i class="fa-solid fa-image text-green-500"></i> Paso 3: Fotografías del Servicio (Ilustraciones de campo)
             </h2>
@@ -151,11 +151,11 @@
     </footer>
 
     <script>
-        // =========================================================================
-        // 🔗 ENLACE DE CONEXIÓN CON TU BACKEND (Pega tu URL /exec de Google Apps Script adentro)
-        // =========================================================================
+        // =====================================================================================
+        // 🔗 1. CONFIGURACIÓN DEL ENLACE (OJO: PEGA TU LINK ADENTRO DE LAS COMILLAS SIN BORRARLAS)
+        // =====================================================================================
         const CONFIG_SCRIPT_URL = "https://script.google.com/a/macros/kaeser.com/s/AKfycbwreykhAzRyRXxZActZubnA3Up1topJTZSC9urOZAoMVqtXoUQlxllQKJZtwW2SY-Xq/exec"; 
-        // =========================================================================
+        // =====================================================================================
 
         let listaAudios = [];
         let listaFotos = [];
@@ -207,4 +207,211 @@
                     let diff = Date.now() - tInicioGrabacion;
                     let s = Math.floor(diff / 1000) % 60;
                     let m = Math.floor(diff / 60000);
-                    document.getElementById("timer_grabacion").innerText = (m < 10 ? "0
+                    document.getElementById("timer_grabacion").innerText = (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
+                }, 1000);
+            }).catch(err => {
+                mostrarToast("Micrófono restringido en este navegador.");
+            });
+        }
+
+        function detenerYGuardarAudio() { if (mediaRecorder && mediaRecorder.state !== "inactive") { mediaRecorder.stop(); finalizarGrabacion(); } }
+        function cancelarGrabacionAudio() { if (mediaRecorder && mediaRecorder.state !== "inactive") { mediaRecorder.stop(); mediaRecorder.ondataavailable = null; finalizarGrabacion(); } }
+        function finalizarGrabacion() {
+            clearInterval(timerInterval);
+            document.getElementById("panel_grabacion_activo").classList.add("hidden");
+            document.getElementById("panel_grabacion_idle").classList.remove("hidden");
+            if (mediaRecorder && mediaRecorder.stream) mediaRecorder.stream.getTracks().forEach(t => t.stop());
+        }
+
+        function eliminarAudio(idx) { listaAudios.splice(idx, 1); renderizarListas(); }
+        function eliminarFoto(idx) { listaFotos.splice(idx, 1); renderizarListas(); }
+        function eliminarPlaca(idx) { listaPlacas.splice(idx, 1); renderizarListas(); }
+
+        function cargarAudiosArchivos(e) {
+            let files = e.target.files; if (files.length === 0) return;
+            let promesas = [];
+            for (let i = 0; i < files.length; i++) {
+                let file = files[i];
+                promesas.push(new Promise((res) => {
+                    let lector = new FileReader();
+                    lector.readAsDataURL(file);
+                    lector.onloadend = function() {
+                        let base64 = lector.result.split(',')[1];
+                        let mime = file.type;
+                        if (!mime) {
+                            let nl = file.name.toLowerCase();
+                            if (nl.endsWith('.opus')) mime = 'audio/opus';
+                            else if (nl.endsWith('.ogg')) mime = 'audio/ogg';
+                            else if (nl.endsWith('.m4a')) mime = 'audio/m4a';
+                            else if (nl.indexOf('ptt') === 0 || nl.indexOf('wa') !== -1) mime = 'audio/ogg';
+                            else mime = 'audio/wav';
+                        }
+                        listaAudios.push({ nombre: file.name, bytesBase64: base64, mime: mime, previsualizacionUrl: URL.createObjectURL(file) });
+                        res();
+                    };
+                }));
+            }
+            Promise.all(promesas).then(() => { renderizarListas(); });
+        }
+
+        function cargarPlacasArchivos(e) {
+            let files = e.target.files; if (files.length === 0) return;
+            let promesas = [];
+            document.getElementById("btn_generar").classList.add("hidden");
+            document.getElementById("loading_panel").classList.remove("hidden");
+            document.getElementById("loading_status").innerText = "Procesando placas de identificación...";
+
+            for (let i = 0; i < files.length; i++) {
+                promesas.push(comprimirFoto(files[i]).then(foto => { listaPlacas.push(foto); }));
+            }
+            Promise.all(promesas).then(() => {
+                document.getElementById("loading_panel").classList.add("hidden");
+                document.getElementById("btn_generar").classList.remove("hidden");
+                renderizarListas();
+            });
+        }
+
+        function cargarFotosArchivos(e) {
+            let files = e.target.files; if (files.length === 0) return;
+            let promesas = [];
+            document.getElementById("btn_generar").classList.add("hidden");
+            document.getElementById("loading_panel").classList.remove("hidden");
+            document.getElementById("loading_status").innerText = "Optimizando fotos de evidencia...";
+
+            for (let i = 0; i < files.length; i++) {
+                promesas.push(comprimirFoto(files[i]).then(foto => { listaFotos.push(foto); }));
+            }
+            Promise.all(promesas).then(() => {
+                document.getElementById("loading_panel").classList.add("hidden");
+                document.getElementById("btn_generar").classList.remove("hidden");
+                renderizarListas();
+            });
+        }
+
+        function comprimirFoto(file) {
+            return new Promise((res) => {
+                let lector = new FileReader();
+                lector.readAsDataURL(file);
+                lector.onload = function(e) {
+                    let img = new Image();
+                    img.src = e.target.result;
+                    img.onload = function() {
+                        let canvas = document.createElement('canvas');
+                        let max_dim = 800;
+                        let w = img.width, h = img.height;
+                        if (w > h ? w > max_dim : h > max_dim) {
+                            if (w > h) { h *= max_dim / w; w = max_dim; }
+                            else { w *= max_dim / h; h = max_dim; }
+                        }
+                        canvas.width = w; canvas.height = h;
+                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                        let dataUrl = canvas.toDataURL('image/jpeg', 0.50);
+                        res({ nombre: file.name.replace(/\.[^/.]+$/, "") + ".jpg", bytesBase64: dataUrl.split(',')[1], mime: "image/jpeg", previsualizacionUrl: dataUrl });
+                    };
+                };
+            });
+        }
+
+        function renderizarListas() {
+            let divA = document.getElementById("lista_audios"); divA.innerHTML = "";
+            if (listaAudios.length > 0) {
+                document.getElementById("lista_audios_contenedor").classList.remove("hidden");
+                document.getElementById("contador_audios").innerText = listaAudios.length;
+                listaAudios.forEach((audio, idx) => {
+                    divA.innerHTML += `<div class="flex items-center justify-between p-2 bg-slate-100 rounded text-xs space-x-2 border">
+                        <span class="truncate font-semibold flex-grow">${audio.nombre}</span>
+                        <audio src="${audio.previsualizacionUrl}" controls class="h-6 max-w-[150px]"></audio>
+                        <button onclick="eliminarAudio(${idx})" class="text-red-500 px-2"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>`;
+                });
+            } else document.getElementById("lista_audios_contenedor").classList.add("hidden");
+
+            let divP = document.getElementById("grid_placas"); divP.innerHTML = "";
+            if (listaPlacas.length > 0) {
+                document.getElementById("lista_placas_contenedor").classList.remove("hidden");
+                listaPlacas.forEach((placa, idx) => {
+                    divP.innerHTML += `<div class="relative border rounded bg-white overflow-hidden text-center text-[10px]">
+                        <img src="${placa.previsualizacionUrl}" class="w-full h-20 object-cover">
+                        <button onclick="eliminarPlaca(${idx})" class="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full"><i class="fa-solid fa-xmark"></i></button>
+                        <div class="p-1 bg-gray-50 truncate">${placa.nombre}</div>
+                    </div>`;
+                });
+            } else document.getElementById("lista_placas_contenedor").classList.add("hidden");
+
+            let divF = document.getElementById("grid_fotos"); divF.innerHTML = "";
+            if (listaFotos.length > 0) {
+                document.getElementById("lista_fotos_contenedor").classList.remove("hidden");
+                listaFotos.forEach((foto, idx) => {
+                    divF.innerHTML += `<div class="relative border rounded bg-white overflow-hidden text-center text-[10px]">
+                        <img src="${foto.previsualizacionUrl}" class="w-full h-20 object-cover">
+                        <button onclick="eliminarFoto(${idx})" class="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full"><i class="fa-solid fa-xmark"></i></button>
+                        <div class="p-1 bg-gray-50 truncate">${foto.nombre}</div>
+                    </div>`;
+                });
+            } else document.getElementById("lista_fotos_contenedor").classList.add("hidden");
+        }
+
+        const setupDragAndDrop = (idZone, inputId, processFunction) => {
+            const dropZone = document.getElementById(idZone);
+            const fileInput = document.getElementById(inputId);
+            dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+            dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('drag-over'); });
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('drag-over');
+                if (e.dataTransfer.files.length > 0) {
+                    fileInput.files = e.dataTransfer.files;
+                    const event = { target: { files: e.dataTransfer.files } };
+                    processFunction(event);
+                }
+            });
+        };
+
+        function iniciarGeneracionReporte() {
+            let scriptUrl = CONFIG_SCRIPT_URL.trim();
+            if (!scriptUrl || scriptUrl.indexOf("AQUÍ_PEGA") !== -1) {
+                return alert("Error de configuración: Reemplaza tu URL de Google Apps Script en la línea 157 de index.html.");
+            }
+
+            if (listaAudios.length === 0) return mostrarToast("Carga al menos un audio.");
+            
+            let totalChars = 0;
+            listaAudios.forEach(a => totalChars += a.bytesBase64.length);
+            listaPlacas.forEach(p => totalChars += p.bytesBase64.length);
+            listaFotos.forEach(f => totalChars += f.bytesBase64.length);
+            if (((totalChars * 0.75) / (1024 * 1024)) > 8.0) return mostrarToast("Exceso de peso acumulado.");
+
+            document.getElementById("success_panel").classList.add("hidden");
+            document.getElementById("error_panel").classList.add("hidden");
+            document.getElementById("btn_generar").classList.add("hidden");
+            document.getElementById("loading_panel").classList.remove("hidden");
+
+            fetch(scriptUrl, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain" },
+                body: JSON.stringify({ audios: listaAudios, fotos: listaFotos, placas: listaPlacas })
+            })
+            .then(response => response.json())
+            .then(res => {
+                document.getElementById("loading_panel").classList.add("hidden");
+                document.getElementById("btn_generar").classList.remove("hidden");
+                if (res.success) {
+                    document.getElementById("success_message").innerHTML = `Informe procesado con éxito para <strong>${res.cliente}</strong>.`;
+                    document.getElementById("success_link").href = res.url;
+                    document.getElementById("success_panel").classList.remove("hidden");
+                    listaAudios = []; listaFotos = []; listaPlacas = []; renderizarListas();
+                } else {
+                    document.getElementById("error_message_text").innerText = res.message;
+                    document.getElementById("error_panel").classList.remove("hidden");
+                }
+            })
+            .catch(err => {
+                document.getElementById("loading_panel").classList.add("hidden");
+                document.getElementById("btn_generar").classList.remove("hidden");
+                document.getElementById("error_message_text").innerText = "Falla de red: " + err.toString();
+                document.getElementById("error_panel").classList.remove("hidden");
+            });
+        }
+    </script>
+</body>
+</html>
